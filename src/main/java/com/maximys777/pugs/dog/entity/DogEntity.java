@@ -1,0 +1,54 @@
+package com.maximys777.pugs.dog.entity;
+
+import com.maximys777.pugs.dog.entity.common.Gender;
+import com.maximys777.pugs.dog.entity.common.Status;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "dogs")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DogEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private String breed;
+
+    @Column(name = "birth_date")
+    private LocalDateTime birthDate;
+
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    private String description;
+
+    private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
