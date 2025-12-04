@@ -4,6 +4,7 @@ import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.entity.common.Status;
 import lombok.Builder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Builder
@@ -15,6 +16,7 @@ public record DogResponse(
         int ageInMonths,
         Gender gender,
         String description,
-        Status status
+        Status status,
+        BigDecimal price
 ) {
 }

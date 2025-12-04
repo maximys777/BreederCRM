@@ -17,6 +17,7 @@ public class DogMapper {
                 .gender(dogEntity.getGender())
                 .description(dogEntity.getDescription())
                 .status(dogEntity.getStatus())
+                .price(dogEntity.getPrice())
                 .build();
     }
 }
