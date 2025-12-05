@@ -1,8 +1,11 @@
 package com.maximys777.pugs.dogs.service;
 
+import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
+import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
 import com.maximys777.pugs.dog.entity.DogEntity;
+import com.maximys777.pugs.dog.entity.DogImageEntity;
 import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.entity.common.Status;
 import com.maximys777.pugs.dog.repository.DogRepository;
@@ -18,14 +21,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +42,9 @@ import static org.mockito.Mockito.when;
 public class DogServiceTest {
     @Mock
     private DogRepository dogRepository;
+
+    @Mock
+    private S3Service s3Service;
 
     @InjectMocks
     private DogService dogService;
@@ -60,11 +71,13 @@ public class DogServiceTest {
                 .description(dogCreateRequest.description())
                 .price(dogCreateRequest.price())
                 .status(Status.AVAILABLE)
+                .images(new ArrayList<>())
                 .build();
 
         when(dogRepository.save(any(DogEntity.class))).thenReturn(dogEntity);
 
-        DogResponse dogResponse = dogService.createDog(dogCreateRequest);
+        DogResponse dogResponse = dogService.createDog(dogCreateRequest, null);
+
         int ageInMonths = dogEntity.getBirthDate().getMonthValue();
 
         Assertions.assertNotNull(dogResponse);
@@ -77,8 +90,134 @@ public class DogServiceTest {
         Assertions.assertEquals(dogEntity.getDescription(), dogResponse.description());
         Assertions.assertEquals(dogEntity.getPrice(), dogResponse.price());
         Assertions.assertEquals(dogEntity.getStatus(), dogResponse.status());
+        Assertions.assertTrue(dogResponse.images().isEmpty());
 
         verify(dogRepository, times(1)).save(any(DogEntity.class));
+        verify(s3Service, never()).uploadFile(any());
+    }
+
+    @Test
+    void createDogWithImages_ShouldReturnDogResponse_WhenSuccess() {
+        DogCreateRequest dogCreateRequest = new DogCreateRequest(
+                "Rex",
+                "Pug",
+                LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30),
+                Gender.FEMALE,
+                "A wonderful review from my daughter, who loves her family. The daughter is sweet and sweet, delivered in 2.5 months. No extra charge." +
+                        "Delivery\n" +
+                        "The daughter has been flipped through twice.",
+                BigDecimal.valueOf(1000)
+        );
+
+        MockMultipartFile file = new MockMultipartFile("images", "test.jpg", "image/jpeg", new byte[1]);
+        List<MultipartFile> files = List.of(file);
+        String s3Url = "https://s3.aws.com/test.jpg";
+
+        when(s3Service.uploadFile(any())).thenReturn(s3Url);
+
+        DogEntity dogEntity = DogEntity.builder()
+                .id(1L)
+                .name(dogCreateRequest.name())
+                .breed(dogCreateRequest.breed())
+                .birthDate(dogCreateRequest.birthDate())
+                .gender(dogCreateRequest.gender())
+                .description(dogCreateRequest.description())
+                .price(dogCreateRequest.price())
+                .status(Status.AVAILABLE)
+                .images(List.of(
+                        DogImageEntity.builder().imageUrl(s3Url).isMain(true).build()
+                ))
+                .build();
+
+        when(dogRepository.save(any(DogEntity.class))).thenReturn(dogEntity);
+
+        DogResponse response = dogService.createDog(dogCreateRequest, files);
+
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(1, response.images().size());
+        Assertions.assertEquals(s3Url, response.images().getFirst());
+
+        verify(s3Service, times(1)).uploadFile(any());
+        verify(dogRepository, times(1)).save(any(DogEntity.class));
+    }
+
+    @Test
+    void updateDog_ShouldReturnUpdatedResponse_WhenNoFiles() {
+        Long dogId = 1L;
+        DogEntity existingDog = DogEntity.builder()
+                .id(dogId)
+                .name("Old Name")
+                .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
+                .price(BigDecimal.valueOf(500))
+                .images(new ArrayList<>())
+                .build();
+
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                "New Name",
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(2000),
+                null
+        );
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(existingDog));
+        when(dogRepository.save(any(DogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DogResponse response = dogService.updateDog(dogId, updateRequest, null);
+
+        Assertions.assertEquals("New Name", response.name());
+        Assertions.assertEquals(BigDecimal.valueOf(2000), response.price());
+
+        verify(dogRepository).findById(dogId);
+        verify(s3Service, never()).uploadFile(any());
+        verify(s3Service, never()).deleteFile(any());
+    }
+
+    @Test
+    void updateDog_ShouldAddAndDeleteImages_WhenFilesProvided() {
+        Long dogId = 1L;
+        String oldImageUrl = "https://s3.aws.com/old.jpg";
+        String newImageUrl = "https://s3.aws.com/new.jpg";
+
+        DogImageEntity oldImage = DogImageEntity.builder().imageUrl(oldImageUrl).build();
+        DogEntity existingDog = DogEntity.builder()
+                .id(dogId)
+                .name("Dog")
+                .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
+                .images(new ArrayList<>(List.of(oldImage)))
+                .build();
+        oldImage.setDog(existingDog);
+
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                null, null, null, null, null, null,
+                List.of(oldImageUrl)
+        );
+
+        MockMultipartFile newFile = new MockMultipartFile("images", "new.jpg", "image/jpeg", new byte[1]);
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(existingDog));
+        when(s3Service.uploadFile(any())).thenReturn(newImageUrl);
+        when(dogRepository.save(any(DogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DogResponse response = dogService.updateDog(dogId, updateRequest, List.of(newFile));
+
+        verify(s3Service).deleteFile(oldImageUrl);
+        verify(s3Service).uploadFile(any());
+
+        Assertions.assertEquals(1, response.images().size());
+        Assertions.assertEquals(newImageUrl, response.images().getFirst());
+    }
+
+    @Test
+    void updateDog_ShouldThrowNotFound_WhenDogDoesNotExist() {
+        Long dogId = 99L;
+        when(dogRepository.findById(dogId)).thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class, () ->
+                dogService.updateDog(dogId, DogUpdateRequest.empty(), null)
+        );
     }
 
     @Test
@@ -94,6 +233,7 @@ public class DogServiceTest {
                         "The daughter has been flipped through twice.")
                 .price(BigDecimal.valueOf(1000))
                 .status(Status.AVAILABLE)
+                .images(Collections.emptyList())
                 .build();
 
         when(dogRepository.findById(1L)).thenReturn(Optional.of(dogEntity));
@@ -112,6 +252,41 @@ public class DogServiceTest {
         Assertions.assertEquals(dogEntity.getDescription(), dogResponse.description());
         Assertions.assertEquals(dogEntity.getPrice(), dogResponse.price());
         Assertions.assertEquals(dogEntity.getStatus(), dogResponse.status());
+        Assertions.assertTrue(dogResponse.images().isEmpty());
+
+        verify(dogRepository, times(1)).findById(1L);
+    }
+
+    @Test
+    void getDogById_ShouldReturnDogResponseWithImages_WhenSuccess() {
+        String url1 = "url-1";
+        String url2 = "url-2";
+
+        DogEntity dogEntity = DogEntity.builder()
+                .id(1L)
+                .name("Nisha")
+                .breed("Pug")
+                .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
+                .gender(Gender.FEMALE)
+                .description("A wonderful review from my daughter, who loves her family. The daughter is sweet and sweet, delivered in 2.5 months. No extra charge." +
+                        "Delivery\n" +
+                        "The daughter has been flipped through twice.")
+                .price(BigDecimal.valueOf(1000))
+                .status(Status.AVAILABLE)
+                .images(List.of(
+                        DogImageEntity.builder().imageUrl(url1).build(),
+                        DogImageEntity.builder().imageUrl(url2).build()
+                ))
+                .build();
+
+        when(dogRepository.findById(1L)).thenReturn(Optional.of(dogEntity));
+
+        DogResponse dogResponse = dogService.getDogById(1L);
+
+        Assertions.assertNotNull(dogResponse);
+        Assertions.assertEquals(2, dogResponse.images().size());
+        Assertions.assertTrue(dogResponse.images().contains(url1));
+        Assertions.assertTrue(dogResponse.images().contains(url2));
 
         verify(dogRepository, times(1)).findById(1L);
     }
@@ -143,6 +318,7 @@ public class DogServiceTest {
                         "The daughter has been flipped through twice.")
                 .price(BigDecimal.valueOf(1000))
                 .status(Status.AVAILABLE)
+                .images(Collections.emptyList())
                 .build();
 
         DogEntity dogEntity2 = DogEntity.builder()
@@ -156,6 +332,7 @@ public class DogServiceTest {
                         "The daughter has been flipped through twice.")
                 .price(BigDecimal.valueOf(1000))
                 .status(Status.AVAILABLE)
+                .images(Collections.emptyList())
                 .build();
 
         Page<DogEntity> expectedPage = new PageImpl<>(List.of(dogEntity1, dogEntity2));

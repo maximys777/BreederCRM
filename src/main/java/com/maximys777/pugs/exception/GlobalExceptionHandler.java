@@ -2,7 +2,9 @@ package com.maximys777.pugs.exception;
 
 import com.maximys777.pugs.exception.dto.response.ErrorResponse;
 import com.maximys777.pugs.exception.dto.response.ValidateErrorResponse;
+import com.maximys777.pugs.exception.exceptions.IllegalArgumentException;
 import com.maximys777.pugs.exception.exceptions.NotFoundException;
+import com.maximys777.pugs.exception.exceptions.ServiceUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -37,6 +39,16 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailableException(ServiceUnavailableException exception) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
+        return build(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(NotFoundException.class)
