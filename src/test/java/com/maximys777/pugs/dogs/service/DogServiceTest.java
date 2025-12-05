@@ -2,6 +2,7 @@ package com.maximys777.pugs.dogs.service;
 
 import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
+import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
 import com.maximys777.pugs.dog.entity.DogEntity;
 import com.maximys777.pugs.dog.entity.DogImageEntity;
@@ -138,6 +139,85 @@ public class DogServiceTest {
 
         verify(s3Service, times(1)).uploadFile(any());
         verify(dogRepository, times(1)).save(any(DogEntity.class));
+    }
+
+    @Test
+    void updateDog_ShouldReturnUpdatedResponse_WhenNoFiles() {
+        Long dogId = 1L;
+        DogEntity existingDog = DogEntity.builder()
+                .id(dogId)
+                .name("Old Name")
+                .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
+                .price(BigDecimal.valueOf(500))
+                .images(new ArrayList<>())
+                .build();
+
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                "New Name",
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(2000),
+                null
+        );
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(existingDog));
+        when(dogRepository.save(any(DogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DogResponse response = dogService.updateDog(dogId, updateRequest, null);
+
+        Assertions.assertEquals("New Name", response.name());
+        Assertions.assertEquals(BigDecimal.valueOf(2000), response.price());
+
+        verify(dogRepository).findById(dogId);
+        verify(s3Service, never()).uploadFile(any());
+        verify(s3Service, never()).deleteFile(any());
+    }
+
+    @Test
+    void updateDog_ShouldAddAndDeleteImages_WhenFilesProvided() {
+        Long dogId = 1L;
+        String oldImageUrl = "https://s3.aws.com/old.jpg";
+        String newImageUrl = "https://s3.aws.com/new.jpg";
+
+        DogImageEntity oldImage = DogImageEntity.builder().imageUrl(oldImageUrl).build();
+        DogEntity existingDog = DogEntity.builder()
+                .id(dogId)
+                .name("Dog")
+                .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
+                .images(new ArrayList<>(List.of(oldImage)))
+                .build();
+        oldImage.setDog(existingDog);
+
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                null, null, null, null, null, null,
+                List.of(oldImageUrl)
+        );
+
+        MockMultipartFile newFile = new MockMultipartFile("images", "new.jpg", "image/jpeg", new byte[1]);
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(existingDog));
+        when(s3Service.uploadFile(any())).thenReturn(newImageUrl);
+        when(dogRepository.save(any(DogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DogResponse response = dogService.updateDog(dogId, updateRequest, List.of(newFile));
+
+        verify(s3Service).deleteFile(oldImageUrl);
+        verify(s3Service).uploadFile(any());
+
+        Assertions.assertEquals(1, response.images().size());
+        Assertions.assertEquals(newImageUrl, response.images().getFirst());
+    }
+
+    @Test
+    void updateDog_ShouldThrowNotFound_WhenDogDoesNotExist() {
+        Long dogId = 99L;
+        when(dogRepository.findById(dogId)).thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class, () ->
+                dogService.updateDog(dogId, DogUpdateRequest.empty(), null)
+        );
     }
 
     @Test

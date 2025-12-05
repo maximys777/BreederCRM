@@ -2,6 +2,7 @@ package com.maximys777.pugs.dog.service;
 
 import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
+import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
 import com.maximys777.pugs.dog.entity.DogEntity;
 import com.maximys777.pugs.dog.entity.DogImageEntity;
@@ -25,7 +26,8 @@ public class DogService {
     private final S3Service s3Service;
 
     @Transactional
-    public DogResponse createDog(DogCreateRequest request, List<MultipartFile> images) {
+    public DogResponse createDog(DogCreateRequest request,
+                                 List<MultipartFile> images) {
         DogEntity entity = DogEntity.builder()
                 .name(request.name())
                 .breed(request.breed())
@@ -62,6 +64,71 @@ public class DogService {
         DogEntity dogEntity = dogRepository.save(entity);
 
         return DogMapper.mapToDogResponse(dogEntity);
+    }
+
+    public DogResponse updateDog(Long id,
+                                 DogUpdateRequest updateRequest,
+                                 List<MultipartFile> images) {
+        final DogUpdateRequest safeRequest = (updateRequest == null)
+                ? DogUpdateRequest.empty()
+                : updateRequest;
+
+        DogEntity dogEntity = validateDogNotFound(id);
+
+        if (safeRequest.name() != null) dogEntity.setName(safeRequest.name());
+        if (safeRequest.breed() != null) dogEntity.setBreed(safeRequest.breed());
+        if (safeRequest.birthDate() != null) dogEntity.setBirthDate(safeRequest.birthDate());
+        if (safeRequest.gender() != null) dogEntity.setGender(safeRequest.gender());
+        if (safeRequest.description() != null) dogEntity.setDescription(safeRequest.description());
+        if (safeRequest.price() != null) dogEntity.setPrice(safeRequest.price());
+
+        if (safeRequest.deleteImageUrl() != null && !safeRequest.deleteImageUrl().isEmpty()) {
+            List<String> urlsToDelete = safeRequest.deleteImageUrl().stream()
+                    .map(String::trim)
+                    .toList();
+
+            List<DogImageEntity> imagesToDelete = dogEntity.getImages().stream()
+                    .filter(img -> urlsToDelete.contains(img.getImageUrl()))
+                    .toList();
+
+            for (DogImageEntity img : imagesToDelete) {
+                s3Service.deleteFile(img.getImageUrl());
+                dogEntity.getImages().remove(img);
+            }
+        }
+
+        boolean hasMainPhoto = dogEntity.getImages().stream()
+                .anyMatch(DogImageEntity::isMain);
+
+        if (images != null && !images.isEmpty()) {
+            for (MultipartFile file : images) {
+                if (file.isEmpty()) continue;
+
+                String url = s3Service.uploadFile(file);
+
+                boolean isMain = !hasMainPhoto;
+
+                DogImageEntity newImage = DogImageEntity.builder()
+                        .imageUrl(url)
+                        .isMain(isMain)
+                        .dog(dogEntity)
+                        .build();
+
+                dogEntity.addImage(newImage);
+
+                if (isMain) {
+                    hasMainPhoto = true;
+                }
+            }
+        }
+
+        if (!dogEntity.getImages().isEmpty() && dogEntity.getImages().stream().noneMatch(DogImageEntity::isMain)) {
+            dogEntity.getImages().getFirst().setMain(true);
+        }
+
+        DogEntity updatedDog = dogRepository.save(dogEntity);
+
+        return DogMapper.mapToDogResponse(updatedDog);
     }
 
     public DogResponse getDogById(Long id) {

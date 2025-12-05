@@ -2,6 +2,7 @@ package com.maximys777.pugs.dogs.controller;
 
 import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
+import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
 import com.maximys777.pugs.dog.entity.DogEntity;
 import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.entity.common.Status;
@@ -198,6 +199,98 @@ public class DogControllerTest {
                 .andExpect(jsonPath("$.errors.price").value("Price can't be less than 0"));
 
         assertThat(dogRepository.findAll().size()).isEqualTo(1);
+    }
+
+    @Test
+    void updateDog_ShouldUpdateFields_WhenNoFiles() throws Exception {
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                "Updated Name",
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(5000),
+                null
+        );
+
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog",
+                "",
+                "application/json",
+                objectMapper.writeValueAsBytes(updateRequest)
+        );
+
+        mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
+                        .file(jsonPart)
+                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dogEntity.getId()))
+                .andExpect(jsonPath("$.name").value("Updated Name"))
+                .andExpect(jsonPath("$.price").value(5000))
+                .andExpect(jsonPath("$.breed").value("Pug"));
+
+        DogEntity updatedDog = dogRepository.findById(dogEntity.getId()).orElseThrow();
+        assertThat(updatedDog.getName()).isEqualTo("Updated Name");
+    }
+
+    @Test
+    void updateDog_ShouldAddImage_WhenFilesProvided() throws Exception {
+        DogUpdateRequest updateRequest = DogUpdateRequest.empty();
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog", "", "application/json", objectMapper.writeValueAsBytes(updateRequest)
+        );
+
+        MockMultipartFile imagePart = new MockMultipartFile(
+                "images", "patch.jpg", "image/jpeg", "bytes".getBytes()
+        );
+
+        String newUrl = "https://s3.aws.com/patch.jpg";
+        Mockito.when(s3Service.uploadFile(Mockito.any())).thenReturn(newUrl);
+
+        mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
+                        .file(jsonPart)
+                        .file(imagePart)
+                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.images").isArray())
+                .andExpect(jsonPath("$.images[0]").value(newUrl));
+
+        Mockito.verify(s3Service).uploadFile(Mockito.any());
+    }
+
+    @Test
+    void updateDog_ShouldReturnNotFound_WhenDogDoesNotExist() throws Exception {
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog", "", "application/json", "{}" .getBytes()
+        );
+
+        mockMvc.perform(multipart("/dogs/{id}", 999L)
+                        .file(jsonPart)
+                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Dog not found"));
+    }
+
+    @Test
+    void updateDog_ShouldReturnBadRequest_WhenValidationFails() throws Exception {
+        DogUpdateRequest invalidRequest = new DogUpdateRequest(
+                "",
+                null, null, null, null, null, null
+        );
+
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog", "", "application/json", objectMapper.writeValueAsBytes(invalidRequest)
+        );
+
+        mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
+                        .file(jsonPart)
+                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").value("Name must be at least 1 char"));
     }
 
     @Test
