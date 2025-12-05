@@ -6,6 +6,7 @@ import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Builder
 public record DogResponse(
@@ -17,6 +18,7 @@ public record DogResponse(
         Gender gender,
         String description,
         Status status,
-        BigDecimal price
+        BigDecimal price,
+        List<String> images
 ) {
 }

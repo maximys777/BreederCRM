@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-dogs-image-table
+      author: maximys777
+      changes:
+        - createTable:
+            tableName: dogs_images
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: image_url
+                  type: VARCHAR(255)
+              - column:
+                  name: main_photo
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: dog_id
+                  type: BIGINT
+
+  - changeSet:
+      id: add-foreign-keys
+      author: maximys777
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dogs_images
+            baseColumnNames: dog_id
+            referencedTableName: dogs
+            referencedColumnNames: id
+            constraintName: fk_images_dog
+            onDelete: CASCADE
