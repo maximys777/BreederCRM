@@ -3,6 +3,7 @@ package com.maximys777.pugs.S3.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.maximys777.pugs.exception.exceptions.BadRequestException;
 import com.maximys777.pugs.exception.exceptions.IllegalArgumentException;
 import com.maximys777.pugs.exception.exceptions.ServiceUnavailableException;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class S3Service {
         validateFile(file);
 
         String extension = getFileExtension(file.getOriginalFilename());
-        String key = UUID.randomUUID() + "." + extension;
+        String key = UUID.randomUUID() + extension;
 
         ObjectMetadata objectMetadata = new ObjectMetadata();
         objectMetadata.setContentLength(file.getSize());
@@ -44,7 +45,7 @@ public class S3Service {
             throw new RuntimeException("Error while reading file" + e.getMessage());
         } catch (Exception e) {
             log.error("S3 fails {}", e.getMessage());
-            throw new ServiceUnavailableException("Error while uploading file" + e.getMessage());
+            throw new ServiceUnavailableException("Error while uploading file");
         }
     }
 
@@ -70,8 +71,8 @@ public class S3Service {
 
     private String getFileExtension(String fileName) {
         if (fileName == null || fileName.lastIndexOf('.') == -1) {
-            return "jpg";
+            throw new BadRequestException("File extension is invalid");
         }
-        return fileName.substring(fileName.lastIndexOf('.') + 1);
+        return fileName.substring(fileName.lastIndexOf('.'));
     }
 }

@@ -347,4 +347,56 @@ public class DogServiceTest {
 
         verify(dogRepository, times(1)).findAll(pageable);
     }
+
+    @Test
+    void deleteDogById_ShouldDeleteImagesAndEntity_WhenSuccess() {
+        Long dogId = 1L;
+        String url1 = "url-1";
+        String url2 = "url-2";
+
+        DogEntity dogEntity = DogEntity.builder()
+                .id(dogId)
+                .images(List.of(
+                        DogImageEntity.builder().imageUrl(url1).build(),
+                        DogImageEntity.builder().imageUrl(url2).build()
+                ))
+                .build();
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(dogEntity));
+
+        dogService.deleteDogById(dogId);
+
+        verify(s3Service, times(1)).deleteFile(url1);
+        verify(s3Service, times(1)).deleteFile(url2);
+        verify(dogRepository, times(1)).delete(dogEntity);
+    }
+
+    @Test
+    void deleteDogById_ShouldDeleteEntityOnly_WhenNoImages() {
+        Long dogId = 1L;
+        DogEntity dogEntity = DogEntity.builder()
+                .id(dogId)
+                .images(Collections.emptyList())
+                .build();
+
+        when(dogRepository.findById(dogId)).thenReturn(Optional.of(dogEntity));
+
+        dogService.deleteDogById(dogId);
+
+        verify(s3Service, never()).deleteFile(any());
+        verify(dogRepository, times(1)).delete(dogEntity);
+    }
+
+    @Test
+    void deleteDogById_ShouldThrowNotFound_WhenDogDoesNotExist() {
+        Long dogId = 99L;
+        when(dogRepository.findById(dogId)).thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class, () ->
+                dogService.deleteDogById(dogId)
+        );
+
+        verify(s3Service, never()).deleteFile(any());
+        verify(dogRepository, never()).delete(any(DogEntity.class));
+    }
 }

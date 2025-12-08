@@ -4,6 +4,7 @@ import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
 import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
 import com.maximys777.pugs.dog.entity.DogEntity;
+import com.maximys777.pugs.dog.entity.DogImageEntity;
 import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.entity.common.Status;
 import com.maximys777.pugs.dog.repository.DogRepository;
@@ -30,6 +31,7 @@ import java.time.Month;
 import java.util.ArrayList;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -202,6 +204,46 @@ public class DogControllerTest {
     }
 
     @Test
+    void createDogWithImages_ShouldReturnBadRequest_WhenUploadingMoreThan10Images() throws Exception {
+        DogCreateRequest requestToCreate = new DogCreateRequest(
+                "Many Photo Dog",
+                "Pugs",
+                LocalDateTime.of(2025, Month.APRIL, 15, 10, 30),
+                Gender.FEMALE,
+                "A wonderful review from my daughter, who loves her family. The daughter is sweet and sweet, delivered in 2.5 months. No extra charge.\\\\n\\\" +\" +" +
+                        "\"\\\"Delivery\\\\n\\\" +\\n\" +\n" +
+                        "\"\\\"The daughter has been flipped through twice.",
+                BigDecimal.valueOf(100)
+        );
+
+        MockMultipartFile dogPart = new MockMultipartFile(
+                "dog",
+                "",
+                "application/json",
+                objectMapper.writeValueAsBytes(requestToCreate)
+        );
+
+        var requestBuilder = multipart("/dogs")
+                .file(dogPart)
+                .contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
+
+        for (int i = 0; i < 11; i++) {
+            requestBuilder.file(new MockMultipartFile(
+                    "images",
+                    "pug" + i + ".jpg",
+                    "image/jpeg",
+                    "fake-bytes".getBytes()
+            ));
+        }
+
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("images exceed 10"));
+
+        assertThat(dogRepository.findAll().size()).isEqualTo(1);
+    }
+
+    @Test
     void updateDog_ShouldUpdateFields_WhenNoFiles() throws Exception {
         DogUpdateRequest updateRequest = new DogUpdateRequest(
                 "Updated Name",
@@ -294,6 +336,38 @@ public class DogControllerTest {
     }
 
     @Test
+    void updateDog_ShouldReturnBadRequest_WhenTotalImagesMoreThan10() throws Exception {
+        DogUpdateRequest updateRequest = DogUpdateRequest.empty();
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog",
+                "",
+                "application/json",
+                objectMapper.writeValueAsBytes(updateRequest)
+        );
+
+        var requestBuilder = multipart("/dogs/{id}", dogEntity.getId());
+        requestBuilder.with(request -> {
+            request.setMethod("PATCH");
+            return request;
+        });
+        requestBuilder.file(jsonPart);
+        requestBuilder.contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
+
+        for (int i = 0; i < 11; i++) {
+            requestBuilder.file(new MockMultipartFile(
+                    "images",
+                    "new" + i + ".jpg",
+                    "image/jpeg",
+                    "bytes".getBytes()
+            ));
+        }
+
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Total images cannot exceed 10"));
+    }
+
+    @Test
     void getDogById_ShouldReturnDogResponse_WhenSuccess() throws Exception {
         mockMvc.perform(get("/dogs/{id}", dogEntity.getId())
                         .accept(MediaType.APPLICATION_JSON))
@@ -336,5 +410,42 @@ public class DogControllerTest {
                 .andExpect(jsonPath("$.content[0].images").isArray());
 
         assertThat(dogRepository.findAll().size()).isEqualTo(1);
+    }
+
+    @Test
+    void deleteDogById_ShouldReturnNoContent_WhenSuccess() throws Exception {
+        assertThat(dogRepository.findById(dogEntity.getId())).isPresent();
+
+        Mockito.doNothing().when(s3Service).deleteFile(Mockito.anyString());
+
+        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId()))
+                .andExpect(status().isNoContent());
+
+        assertThat(dogRepository.findById(dogEntity.getId())).isEmpty();
+    }
+
+    @Test
+    void deleteDogById_ShouldReturnNotFound_WhenDogNotFound() throws Exception {
+        mockMvc.perform(delete("/dogs/{id}", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Dog not found"));
+    }
+
+    @Test
+    void deleteDogById_ShouldRollbackTransaction_WhenS3Fails() throws Exception {
+        DogImageEntity img = DogImageEntity.builder()
+                .imageUrl("https://s3.aws.com/fail.jpg")
+                .dog(dogEntity)
+                .build();
+        dogEntity.addImage(img);
+        dogRepository.save(dogEntity);
+
+        Mockito.doThrow(new RuntimeException("S3 Error"))
+                .when(s3Service).deleteFile(Mockito.anyString());
+
+        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId()))
+                .andExpect(status().isInternalServerError());
+
+        assertThat(dogRepository.findById(dogEntity.getId())).isPresent();
     }
 }

@@ -2,6 +2,7 @@ package com.maximys777.pugs.exception;
 
 import com.maximys777.pugs.exception.dto.response.ErrorResponse;
 import com.maximys777.pugs.exception.dto.response.ValidateErrorResponse;
+import com.maximys777.pugs.exception.exceptions.BadRequestException;
 import com.maximys777.pugs.exception.exceptions.IllegalArgumentException;
 import com.maximys777.pugs.exception.exceptions.NotFoundException;
 import com.maximys777.pugs.exception.exceptions.ServiceUnavailableException;
@@ -48,6 +49,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException exception) {
+        return build(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException exception) {
         return build(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 

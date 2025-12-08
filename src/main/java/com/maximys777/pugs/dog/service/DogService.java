@@ -9,6 +9,7 @@ import com.maximys777.pugs.dog.entity.DogImageEntity;
 import com.maximys777.pugs.dog.entity.common.Status;
 import com.maximys777.pugs.dog.mapper.DogMapper;
 import com.maximys777.pugs.dog.repository.DogRepository;
+import com.maximys777.pugs.exception.exceptions.IllegalArgumentException;
 import com.maximys777.pugs.exception.exceptions.NotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +67,7 @@ public class DogService {
         return DogMapper.mapToDogResponse(dogEntity);
     }
 
+    @Transactional
     public DogResponse updateDog(Long id,
                                  DogUpdateRequest updateRequest,
                                  List<MultipartFile> images) {
@@ -95,6 +97,14 @@ public class DogService {
                 s3Service.deleteFile(img.getImageUrl());
                 dogEntity.getImages().remove(img);
             }
+        }
+
+        int newImagesCount = (images == null) ? 0 : images.size();
+
+        int currentImagesCount = dogEntity.getImages().size();
+
+        if (currentImagesCount + newImagesCount > 10) {
+            throw new IllegalArgumentException("Total images cannot exceed 10");
         }
 
         boolean hasMainPhoto = dogEntity.getImages().stream()
