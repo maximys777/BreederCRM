@@ -67,7 +67,11 @@ public class AuthService {
         UserEntity user = userRepository.findByUsername(request.username()).
                 orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (user.getRoles().contains(Role.OWNER) || user.getRoles().contains(Role.ADMIN) || user.getRoles().contains(Role.EDITOR)) {
+        boolean isPersonal = user.getRoles().contains(Role.OWNER)
+                || user.getRoles().contains(Role.ADMIN)
+                || user.getRoles().contains(Role.EDITOR);
+
+        if (isPersonal && user.getTelegramChatId() != null) {
             return start2FaProcess(user);
         }
 
@@ -76,12 +80,10 @@ public class AuthService {
         String token = jwtService.generateToken(userDetails);
 
         return new AuthResponse(token, false);
+
     }
 
     private AuthResponse start2FaProcess(UserEntity user) {
-        if (user.getTelegramChatId() == null) {
-            throw new IllegalArgumentException("Telegram Chat Id is required");
-        }
 
         String code = otpService.generateOtpCode(user.getUsername());
 
@@ -89,7 +91,7 @@ public class AuthService {
 
         telegramBotService.sendMessage(user.getTelegramChatId(), message);
 
-        return new AuthResponse(code, true);
+        return new AuthResponse(null, true);
     }
 
     public AuthResponse verify2Fa(String username, String code) {
