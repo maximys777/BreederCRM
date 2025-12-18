@@ -1,6 +1,7 @@
 package com.maximys777.pugs.security.controller;
 
 import com.maximys777.pugs.security.dto.request.AuthRequest;
+import com.maximys777.pugs.security.dto.request.OtpVerifyRequest;
 import com.maximys777.pugs.security.dto.request.RegisterRequest;
 import com.maximys777.pugs.security.dto.response.AuthResponse;
 import com.maximys777.pugs.security.service.AuthService;
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse authenticate(@RequestBody @Valid AuthRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/login/verify")
+    public AuthResponse verifyOtp(@RequestBody OtpVerifyRequest request) {
+        return authService.verify2Fa(request.username(), request.code());
     }
 }
