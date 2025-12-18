@@ -1,6 +1,7 @@
 package com.maximys777.pugs.dog.dto.request;
 
 import com.maximys777.pugs.dog.entity.common.Gender;
+import com.maximys777.pugs.dog.entity.common.Status;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -18,9 +19,10 @@ public record DogUpdateRequest(
         String description,
         @Positive
         BigDecimal price,
+        Status status,
         List<String> deleteImageUrl
 ) {
     public static DogUpdateRequest empty() {
-        return new DogUpdateRequest(null, null, null, null, null, null, null);
+        return new DogUpdateRequest(null, null, null, null, null, null, null, null);
     }
 }

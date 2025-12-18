@@ -150,6 +150,7 @@ public class DogServiceTest {
                 .birthDate(LocalDateTime.of(2025, Month.AUGUST, 25, 10, 30))
                 .price(BigDecimal.valueOf(500))
                 .images(new ArrayList<>())
+                .status(Status.SOLD)
                 .build();
 
         DogUpdateRequest updateRequest = new DogUpdateRequest(
@@ -159,6 +160,7 @@ public class DogServiceTest {
                 null,
                 null,
                 BigDecimal.valueOf(2000),
+                null,
                 null
         );
 
@@ -169,6 +171,7 @@ public class DogServiceTest {
 
         Assertions.assertEquals("New Name", response.name());
         Assertions.assertEquals(BigDecimal.valueOf(2000), response.price());
+        Assertions.assertEquals(Status.SOLD, response.status());
 
         verify(dogRepository).findById(dogId);
         verify(s3Service, never()).uploadFile(any());
@@ -191,7 +194,7 @@ public class DogServiceTest {
         oldImage.setDog(existingDog);
 
         DogUpdateRequest updateRequest = new DogUpdateRequest(
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 List.of(oldImageUrl)
         );
 

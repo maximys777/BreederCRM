@@ -252,6 +252,7 @@ public class DogControllerTest {
                 null,
                 null,
                 BigDecimal.valueOf(5000),
+                null,
                 null
         );
 
@@ -264,7 +265,10 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
-                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(dogEntity.getId()))
@@ -293,7 +297,10 @@ public class DogControllerTest {
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
                         .file(imagePart)
-                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.images").isArray())
@@ -305,12 +312,15 @@ public class DogControllerTest {
     @Test
     void updateDog_ShouldReturnNotFound_WhenDogDoesNotExist() throws Exception {
         MockMultipartFile jsonPart = new MockMultipartFile(
-                "dog", "", "application/json", "{}" .getBytes()
+                "dog", "", "application/json", "{}".getBytes()
         );
 
         mockMvc.perform(multipart("/dogs/{id}", 999L)
                         .file(jsonPart)
-                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Dog not found"));
@@ -320,7 +330,7 @@ public class DogControllerTest {
     void updateDog_ShouldReturnBadRequest_WhenValidationFails() throws Exception {
         DogUpdateRequest invalidRequest = new DogUpdateRequest(
                 "",
-                null, null, null, null, null, null
+                null, null, null, null, null, null, null
         );
 
         MockMultipartFile jsonPart = new MockMultipartFile(
@@ -329,7 +339,10 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
-                        .with(request -> { request.setMethod("PATCH"); return request; })
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.name").value("Name must be at least 1 char"));
