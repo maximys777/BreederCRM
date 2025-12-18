@@ -83,6 +83,7 @@ public class DogService {
         if (safeRequest.gender() != null) dogEntity.setGender(safeRequest.gender());
         if (safeRequest.description() != null) dogEntity.setDescription(safeRequest.description());
         if (safeRequest.price() != null) dogEntity.setPrice(safeRequest.price());
+        if (safeRequest.status() != null) dogEntity.setStatus(safeRequest.status());
 
         if (safeRequest.deleteImageUrl() != null && !safeRequest.deleteImageUrl().isEmpty()) {
             List<String> urlsToDelete = safeRequest.deleteImageUrl().stream()
