@@ -32,8 +32,11 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**", "/telegrams").permitAll()
                         .requestMatchers(HttpMethod.GET, "/dogs/**").permitAll()
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/dogs").hasAnyRole("ADMIN", "OWNER")
+                        .requestMatchers(HttpMethod.PATCH, "/dogs/**").hasAnyRole("ADMIN", "OWNER", "EDITOR")
+                        .requestMatchers(HttpMethod.DELETE, "/dogs/**").hasAnyRole("ADMIN", "OWNER")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
