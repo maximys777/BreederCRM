@@ -20,6 +20,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -31,6 +32,7 @@ import java.time.Month;
 import java.util.ArrayList;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -83,6 +85,8 @@ public class DogControllerTest {
                 .build();
 
         dogRepository.save(dogEntity);
+
+
     }
 
     @Test
@@ -107,6 +111,7 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
+                        .with(user("admin").roles("ADMIN", "OWNER"))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -157,6 +162,7 @@ public class DogControllerTest {
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
                         .file(imagePart)
+                        .with(user("admin").roles("ADMIN", "OWNER"))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -187,6 +193,7 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
+                        .with(user("admin").roles("ADMIN", "OWNER"))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isBadRequest())
 
@@ -223,8 +230,9 @@ public class DogControllerTest {
                 objectMapper.writeValueAsBytes(requestToCreate)
         );
 
-        var requestBuilder = multipart("/dogs")
+        MockMultipartHttpServletRequestBuilder requestBuilder = multipart("/dogs")
                 .file(dogPart)
+                .with(user("admin").roles("ADMIN", "OWNER"))
                 .contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
 
         for (int i = 0; i < 11; i++) {
@@ -239,6 +247,34 @@ public class DogControllerTest {
         mockMvc.perform(requestBuilder)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("images exceed 10"));
+
+        assertThat(dogRepository.findAll().size()).isEqualTo(1);
+    }
+
+    @Test
+    void createDog_ShouldReturnForbidden_WhenUserIsNotPermitted() throws Exception {
+        DogCreateRequest requestToCreate = new DogCreateRequest(
+                "New Dog",
+                "Pugs",
+                LocalDateTime.of(2025, Month.APRIL, 15, 10, 30),
+                Gender.FEMALE,
+                "A wonderful review from my daughter, who loves her family. The daughter is sweet and sweet, delivered in 2.5 months. No extra charge.\\n\" +" +
+                        "\"Delivery\\n\" +\n" +
+                        "\"The daughter has been flipped through twice.",
+                BigDecimal.valueOf(100)
+        );
+
+        MockMultipartFile dogPart = new MockMultipartFile(
+                "dog",
+                "",
+                "application/json",
+                objectMapper.writeValueAsBytes(requestToCreate)
+        );
+
+        mockMvc.perform(multipart("/dogs")
+                        .file(dogPart)
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isForbidden());
 
         assertThat(dogRepository.findAll().size()).isEqualTo(1);
     }
@@ -265,6 +301,7 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
+                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -297,6 +334,7 @@ public class DogControllerTest {
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
                         .file(imagePart)
+                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -317,6 +355,7 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", 999L)
                         .file(jsonPart)
+                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -339,6 +378,7 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
+                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -358,11 +398,12 @@ public class DogControllerTest {
                 objectMapper.writeValueAsBytes(updateRequest)
         );
 
-        var requestBuilder = multipart("/dogs/{id}", dogEntity.getId());
+        MockMultipartHttpServletRequestBuilder requestBuilder = multipart("/dogs/{id}", dogEntity.getId());
         requestBuilder.with(request -> {
             request.setMethod("PATCH");
             return request;
         });
+        requestBuilder.with(user("admin").roles("ADMIN", "OWNER", "EDITOR"));
         requestBuilder.file(jsonPart);
         requestBuilder.contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
 
@@ -378,6 +419,39 @@ public class DogControllerTest {
         mockMvc.perform(requestBuilder)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Total images cannot exceed 10"));
+    }
+
+    @Test
+    void updateDog_ShouldReturnForbidden_WhenUserIsNotPermitted() throws Exception {
+        DogUpdateRequest updateRequest = new DogUpdateRequest(
+                "Updated Name",
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.valueOf(5000),
+                null,
+                null
+        );
+
+        MockMultipartFile jsonPart = new MockMultipartFile(
+                "dog",
+                "",
+                "application/json",
+                objectMapper.writeValueAsBytes(updateRequest)
+        );
+
+        mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
+                        .file(jsonPart)
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                .andExpect(status().isForbidden());
+
+        DogEntity updatedDog = dogRepository.findById(dogEntity.getId()).orElseThrow();
+        assertThat(updatedDog.getName()).isEqualTo("Dog");
     }
 
     @Test
@@ -427,11 +501,8 @@ public class DogControllerTest {
 
     @Test
     void deleteDogById_ShouldReturnNoContent_WhenSuccess() throws Exception {
-        assertThat(dogRepository.findById(dogEntity.getId())).isPresent();
-
-        Mockito.doNothing().when(s3Service).deleteFile(Mockito.anyString());
-
-        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId()))
+        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId())
+                        .with(user("admin").roles("ADMIN", "OWNER")))
                 .andExpect(status().isNoContent());
 
         assertThat(dogRepository.findById(dogEntity.getId())).isEmpty();
@@ -439,7 +510,8 @@ public class DogControllerTest {
 
     @Test
     void deleteDogById_ShouldReturnNotFound_WhenDogNotFound() throws Exception {
-        mockMvc.perform(delete("/dogs/{id}", 999L))
+        mockMvc.perform(delete("/dogs/{id}", 999L)
+                        .with(user("admin").roles("ADMIN", "OWNER")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Dog not found"));
     }
@@ -456,9 +528,18 @@ public class DogControllerTest {
         Mockito.doThrow(new RuntimeException("S3 Error"))
                 .when(s3Service).deleteFile(Mockito.anyString());
 
-        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId()))
+        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId())
+                        .with(user("admin").roles("ADMIN", "OWNER")))
                 .andExpect(status().isInternalServerError());
 
         assertThat(dogRepository.findById(dogEntity.getId())).isPresent();
+    }
+
+    @Test
+    void deleteDogById_ShouldReturnForbidden_WhenUserIsNotPermitted() throws Exception {
+        mockMvc.perform(delete("/dogs/{id}", dogEntity.getId()))
+                .andExpect(status().isForbidden());
+
+        assertThat(dogRepository.findById(dogEntity.getId())).isNotEmpty();
     }
 }
