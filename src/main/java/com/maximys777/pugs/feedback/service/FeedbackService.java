@@ -1,5 +1,6 @@
 package com.maximys777.pugs.feedback.service;
 
+import com.maximys777.pugs.dog.repository.DogRepository;
 import com.maximys777.pugs.exception.exceptions.NotFoundException;
 import com.maximys777.pugs.feedback.dto.request.FeedbackCreateRequest;
 import com.maximys777.pugs.feedback.dto.response.FeedbackResponse;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class FeedbackService {
     private final FeedbackRepository feedbackRepository;
+    private final DogRepository dogRepository;
 
     public FeedbackResponse createNewFeedback(FeedbackCreateRequest request) {
         FeedbackEntity feedbackEntity = FeedbackEntity.builder()
@@ -42,7 +44,11 @@ public class FeedbackService {
         return FeedbackMapper.mapToFeedbackResponse(updatedFeedbackEntity);
     }
 
-    public Page<FeedbackResponse> findFeedBacksByDogId(Long dogId, Pageable pageable) {
+    public Page<FeedbackResponse> findFeedbacksByDogId(Long dogId, Pageable pageable) {
+        if (!dogRepository.existsById(dogId)) {
+            throw new NotFoundException("Dog not found");
+        }
+
         return feedbackRepository.findByDogId(dogId, pageable).map(FeedbackMapper::mapToFeedbackResponse);
     }
 

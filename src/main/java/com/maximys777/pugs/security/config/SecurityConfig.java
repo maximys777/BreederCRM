@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/dogs").hasAnyAuthority("ADMIN", "OWNER")
                         .requestMatchers(HttpMethod.PATCH, "/dogs/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/dogs/**").hasAnyAuthority("ADMIN", "OWNER")
-                        .requestMatchers(HttpMethod.POST, "/feedbacks/").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/feedbacks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .requestMatchers(HttpMethod.PATCH, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")

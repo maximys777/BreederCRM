@@ -45,7 +45,7 @@ public class FeedbackController {
     @GetMapping("/{feedbackId}")
     public Page<FeedbackResponse> getFeedbacksByDogId(@PathVariable Long feedbackId,
                                                       Pageable pageable) {
-        return feedbackService.findFeedBacksByDogId(feedbackId, pageable);
+        return feedbackService.findFeedbacksByDogId(feedbackId, pageable);
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'OWNER', 'EDITOR')")
