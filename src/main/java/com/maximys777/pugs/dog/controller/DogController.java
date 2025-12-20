@@ -30,7 +30,7 @@ import java.util.List;
 public class DogController {
     private final DogService dogService;
 
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'OWNER')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public DogResponse createNewDog(@RequestPart("dog") @Valid DogCreateRequest request,
@@ -38,7 +38,7 @@ public class DogController {
         return dogService.createDog(request, images);
     }
 
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OWNER', 'ROLE_EDITOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'OWNER', 'EDITOR')")
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public DogResponse updateDog(@PathVariable Long id,
                                  @RequestPart(value = "dog", required = false) @Valid DogUpdateRequest updateRequest,
@@ -58,7 +58,7 @@ public class DogController {
         return dogService.getAllDogs(pageable);
     }
 
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_OWNER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'OWNER')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDogById(@PathVariable Long id) {

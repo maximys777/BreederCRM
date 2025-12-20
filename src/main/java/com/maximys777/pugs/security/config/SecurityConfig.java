@@ -34,9 +34,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/telegrams").permitAll()
                         .requestMatchers(HttpMethod.GET, "/dogs/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/dogs").hasAnyRole("ADMIN", "OWNER")
-                        .requestMatchers(HttpMethod.PATCH, "/dogs/**").hasAnyRole("ADMIN", "OWNER", "EDITOR")
-                        .requestMatchers(HttpMethod.DELETE, "/dogs/**").hasAnyRole("ADMIN", "OWNER")
+                        .requestMatchers(HttpMethod.POST, "/dogs").hasAnyAuthority("ADMIN", "OWNER")
+                        .requestMatchers(HttpMethod.PATCH, "/dogs/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
+                        .requestMatchers(HttpMethod.DELETE, "/dogs/**").hasAnyAuthority("ADMIN", "OWNER")
+                        .requestMatchers(HttpMethod.POST, "/feedbacks").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
+                        .requestMatchers(HttpMethod.PATCH, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
+                        .requestMatchers(HttpMethod.DELETE, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
