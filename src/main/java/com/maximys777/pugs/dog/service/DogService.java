@@ -3,9 +3,11 @@ package com.maximys777.pugs.dog.service;
 import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
 import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
+import com.maximys777.pugs.dog.dto.response.DogCardResponse;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
 import com.maximys777.pugs.dog.entity.DogEntity;
 import com.maximys777.pugs.dog.entity.DogImageEntity;
+import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.entity.common.Status;
 import com.maximys777.pugs.dog.mapper.DogMapper;
 import com.maximys777.pugs.dog.repository.DogRepository;
@@ -14,7 +16,9 @@ import com.maximys777.pugs.exception.exceptions.NotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -148,9 +152,16 @@ public class DogService {
         return DogMapper.mapToDogResponse(entityToResponse);
     }
 
-    public Page<DogResponse> getAllDogs(Pageable pageable) {
-        return dogRepository.findAll(pageable).map(DogMapper::mapToDogResponse);
+    public Page<DogCardResponse> getAllDogs(int page,
+                                            int size,
+                                            String sortDirection,
+                                            Gender gender) {
+        Pageable pageable = createPageRequest(page, size, sortDirection);
+
+        return dogRepository.findAllByFilters(gender, pageable)
+                .map(DogMapper::mapToDogCardResponse);
     }
+
 
     @Transactional
     public void deleteDogById(Long id) {
@@ -169,5 +180,17 @@ public class DogService {
     private DogEntity validateDogNotFound(Long id) {
         return dogRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Dog not found"));
+    }
+
+    private Pageable createPageRequest(int page, int size, String sortDirection) {
+        Sort sort;
+
+        if ("asc".equalsIgnoreCase(sortDirection)) {
+            sort = Sort.by(Sort.Direction.DESC, "birthDate");
+        } else {
+            sort = Sort.by(Sort.Direction.ASC, "birthDate");
+        }
+
+        return PageRequest.of(page, size, sort);
     }
 }

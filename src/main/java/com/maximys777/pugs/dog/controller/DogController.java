@@ -2,12 +2,13 @@ package com.maximys777.pugs.dog.controller;
 
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
 import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
+import com.maximys777.pugs.dog.dto.response.DogCardResponse;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
+import com.maximys777.pugs.dog.entity.common.Gender;
 import com.maximys777.pugs.dog.service.DogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,8 +56,11 @@ public class DogController {
 
     @PreAuthorize("permitAll()")
     @GetMapping
-    public Page<DogResponse> getAllDogs(Pageable pageable) {
-        return dogService.getAllDogs(pageable);
+    public Page<DogCardResponse> getAllDogs(@RequestParam(required = false) Gender gender,
+                                            @RequestParam(defaultValue = "asc") String ageSort,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
+        return dogService.getAllDogs(page, size, ageSort, gender);
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'OWNER')")

@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -111,7 +113,9 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
-                        .with(user("admin").roles("ADMIN", "OWNER"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -162,7 +166,9 @@ public class DogControllerTest {
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
                         .file(imagePart)
-                        .with(user("admin").roles("ADMIN", "OWNER"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
@@ -193,7 +199,9 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs")
                         .file(dogPart)
-                        .with(user("admin").roles("ADMIN", "OWNER"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
                 .andExpect(status().isBadRequest())
 
@@ -232,7 +240,9 @@ public class DogControllerTest {
 
         MockMultipartHttpServletRequestBuilder requestBuilder = multipart("/dogs")
                 .file(dogPart)
-                .with(user("admin").roles("ADMIN", "OWNER"))
+                .with(user("personal")
+                        .authorities(new SimpleGrantedAuthority("OWNER"),
+                                new SimpleGrantedAuthority("ADMIN")))
                 .contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
 
         for (int i = 0; i < 11; i++) {
@@ -301,7 +311,10 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
-                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("EDITOR"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -334,7 +347,10 @@ public class DogControllerTest {
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
                         .file(imagePart)
-                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("EDITOR"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -355,7 +371,10 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", 999L)
                         .file(jsonPart)
-                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("EDITOR"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -378,7 +397,10 @@ public class DogControllerTest {
 
         mockMvc.perform(multipart("/dogs/{id}", dogEntity.getId())
                         .file(jsonPart)
-                        .with(user("admin").roles("ADMIN", "OWNER", "EDITOR"))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("EDITOR"),
+                                        new SimpleGrantedAuthority("ADMIN")))
                         .with(request -> {
                             request.setMethod("PATCH");
                             return request;
@@ -403,7 +425,10 @@ public class DogControllerTest {
             request.setMethod("PATCH");
             return request;
         });
-        requestBuilder.with(user("admin").roles("ADMIN", "OWNER", "EDITOR"));
+        requestBuilder.with(user("personal")
+                .authorities(new SimpleGrantedAuthority("OWNER"),
+                        new SimpleGrantedAuthority("EDITOR"),
+                        new SimpleGrantedAuthority("ADMIN")));
         requestBuilder.file(jsonPart);
         requestBuilder.contentType(MediaType.MULTIPART_FORM_DATA_VALUE);
 
@@ -483,7 +508,7 @@ public class DogControllerTest {
     }
 
     @Test
-    void getAllDogs_ShouldReturnPageableDogResponse_WhenSuccess() throws Exception {
+    void getAllDogs_ShouldReturnPageableDogCardResponse_WhenSuccess() throws Exception {
         mockMvc.perform(get("/dogs")
                         .param("page", "0")
                         .param("size", "10")
@@ -493,16 +518,67 @@ public class DogControllerTest {
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].id").exists())
+                .andExpect(jsonPath("$.content[0].ageInMonths").exists())
                 .andExpect(jsonPath("$.content[0].name").value("Dog"))
-                .andExpect(jsonPath("$.content[0].images").isArray());
+                .andExpect(jsonPath("$.content[0].mainImageUrl").hasJsonPath());
 
         assertThat(dogRepository.findAll().size()).isEqualTo(1);
     }
 
     @Test
+    void getAllDogs_ShouldReturnSortedByAge_WhenSortParamProvided() throws Exception {
+        dogRepository.deleteAll();
+
+        DogEntity youngDog = DogEntity.builder()
+                .name("Young Dog")
+                .breed("Pug")
+                .birthDate(LocalDateTime.now().minusMonths(1))
+                .price(BigDecimal.valueOf(1000))
+                .gender(Gender.MALE)
+                .status(Status.AVAILABLE)
+                .images(new ArrayList<>())
+                .build();
+
+        DogEntity oldDog = DogEntity.builder()
+                .name("Old Dog")
+                .breed("Pug")
+                .birthDate(LocalDateTime.now().minusYears(5))
+                .price(BigDecimal.valueOf(500))
+                .gender(Gender.FEMALE)
+                .status(Status.AVAILABLE)
+                .images(new ArrayList<>())
+                .build();
+
+        dogRepository.saveAll(List.of(oldDog, youngDog));
+
+        mockMvc.perform(get("/dogs")
+                        .param("ageSort", "asc")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].name").value("Young Dog"))
+                .andExpect(jsonPath("$.content[0].ageInMonths").value(1))
+                .andExpect(jsonPath("$.content[1].name").value("Old Dog"));
+
+        mockMvc.perform(get("/dogs")
+                        .param("ageSort", "desc")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].name").value("Old Dog"))
+                .andExpect(jsonPath("$.content[1].name").value("Young Dog"));
+    }
+
+    @Test
     void deleteDogById_ShouldReturnNoContent_WhenSuccess() throws Exception {
         mockMvc.perform(delete("/dogs/{id}", dogEntity.getId())
-                        .with(user("admin").roles("ADMIN", "OWNER")))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN"))))
                 .andExpect(status().isNoContent());
 
         assertThat(dogRepository.findById(dogEntity.getId())).isEmpty();
@@ -511,7 +587,9 @@ public class DogControllerTest {
     @Test
     void deleteDogById_ShouldReturnNotFound_WhenDogNotFound() throws Exception {
         mockMvc.perform(delete("/dogs/{id}", 999L)
-                        .with(user("admin").roles("ADMIN", "OWNER")))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Dog not found"));
     }
@@ -529,7 +607,9 @@ public class DogControllerTest {
                 .when(s3Service).deleteFile(Mockito.anyString());
 
         mockMvc.perform(delete("/dogs/{id}", dogEntity.getId())
-                        .with(user("admin").roles("ADMIN", "OWNER")))
+                        .with(user("personal")
+                                .authorities(new SimpleGrantedAuthority("OWNER"),
+                                        new SimpleGrantedAuthority("ADMIN"))))
                 .andExpect(status().isInternalServerError());
 
         assertThat(dogRepository.findById(dogEntity.getId())).isPresent();
