@@ -3,6 +3,7 @@ package com.maximys777.pugs.dogs.service;
 import com.maximys777.pugs.S3.service.S3Service;
 import com.maximys777.pugs.dog.dto.request.DogCreateRequest;
 import com.maximys777.pugs.dog.dto.request.DogUpdateRequest;
+import com.maximys777.pugs.dog.dto.response.DogCardResponse;
 import com.maximys777.pugs.dog.dto.response.DogResponse;
 import com.maximys777.pugs.dog.entity.DogEntity;
 import com.maximys777.pugs.dog.entity.DogImageEntity;
@@ -19,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -307,9 +308,7 @@ public class DogServiceTest {
     }
 
     @Test
-    void getAllDogs_ShouldReturnPageableDogResponse_WhenSuccess() {
-        Pageable pageable = PageRequest.of(0, 10);
-
+    void getAllDogs_ShouldReturnPageableDogCardResponse_WhenSuccess() {
         DogEntity dogEntity1 = DogEntity.builder()
                 .id(1L)
                 .name("Nisha")
@@ -340,15 +339,15 @@ public class DogServiceTest {
 
         Page<DogEntity> expectedPage = new PageImpl<>(List.of(dogEntity1, dogEntity2));
 
-        when(dogRepository.findAll(pageable)).thenReturn(expectedPage);
+        when(dogRepository.findAllByFilters(eq(Gender.FEMALE), any(Pageable.class))).thenReturn(expectedPage);
 
-        Page<DogResponse> dogResponsePage = dogService.getAllDogs(pageable);
+        Page<DogCardResponse> dogCardResponsePage = dogService.getAllDogs(0, 10, "asc", Gender.FEMALE);
 
-        Assertions.assertNotNull(dogResponsePage);
-        Assertions.assertEquals(2, dogResponsePage.getTotalElements());
-        Assertions.assertEquals(1, dogResponsePage.getTotalPages());
+        Assertions.assertNotNull(dogCardResponsePage);
+        Assertions.assertEquals(2, dogCardResponsePage.getTotalElements());
+        Assertions.assertEquals(1, dogCardResponsePage.getTotalPages());
 
-        verify(dogRepository, times(1)).findAll(pageable);
+        verify(dogRepository, times(1)).findAllByFilters(eq(Gender.FEMALE), any(Pageable.class));
     }
 
     @Test
