@@ -41,6 +41,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .requestMatchers(HttpMethod.PATCH, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/feedbacks/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR")
+                        .requestMatchers(HttpMethod.POST, "/favorites/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR", "USER")
+                        .requestMatchers(HttpMethod.GET, "/favorites").hasAnyAuthority("ADMIN", "OWNER", "EDITOR", "USER")
+                        .requestMatchers(HttpMethod.DELETE, "/favorites/**").hasAnyAuthority("ADMIN", "OWNER", "EDITOR", "USER")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
