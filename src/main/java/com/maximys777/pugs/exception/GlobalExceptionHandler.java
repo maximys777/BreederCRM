@@ -2,6 +2,7 @@ package com.maximys777.pugs.exception;
 
 import com.maximys777.pugs.exception.dto.response.ErrorResponse;
 import com.maximys777.pugs.exception.dto.response.ValidateErrorResponse;
+import com.maximys777.pugs.exception.exceptions.AlreadyExistsException;
 import com.maximys777.pugs.exception.exceptions.BadRequestException;
 import com.maximys777.pugs.exception.exceptions.IllegalArgumentException;
 import com.maximys777.pugs.exception.exceptions.NotFoundException;
@@ -80,6 +81,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUsernameNotFoundException(UsernameNotFoundException exception) {
         return build(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(AlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleAlreadyExistsException(AlreadyExistsException exception) {
+        return build(HttpStatus.CONFLICT, exception.getMessage());
     }
 
     @ExceptionHandler(UsernameAlreadyExistsException.class)
