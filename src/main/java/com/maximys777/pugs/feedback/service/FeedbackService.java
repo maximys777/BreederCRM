@@ -8,7 +8,9 @@ import com.maximys777.pugs.feedback.entity.FeedbackEntity;
 import com.maximys777.pugs.feedback.entity.common.FeedbackStatus;
 import com.maximys777.pugs.feedback.mapper.FeedbackMapper;
 import com.maximys777.pugs.feedback.repository.FeedbackRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Service;
 public class FeedbackService {
     private final FeedbackRepository feedbackRepository;
     private final DogRepository dogRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
+    @Transactional
     public FeedbackResponse createNewFeedback(FeedbackCreateRequest request) {
         FeedbackEntity feedbackEntity = FeedbackEntity.builder()
                 .name(request.name())
@@ -30,6 +34,8 @@ public class FeedbackService {
                 .build();
 
         FeedbackEntity savedFeedbackEntity = feedbackRepository.save(feedbackEntity);
+
+        eventPublisher.publishEvent(new FeedbackCreatedEvent(savedFeedbackEntity));
 
         return FeedbackMapper.mapToFeedbackResponse(savedFeedbackEntity);
     }
