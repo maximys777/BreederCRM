@@ -9,6 +9,7 @@ import com.maximys777.pugs.feedback.entity.FeedbackEntity;
 import com.maximys777.pugs.feedback.entity.common.ContactType;
 import com.maximys777.pugs.feedback.entity.common.FeedbackStatus;
 import com.maximys777.pugs.feedback.repository.FeedbackRepository;
+import com.maximys777.pugs.telegram.service.PugsTelegramBotService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -48,6 +50,9 @@ public class FeedbackControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private PugsTelegramBotService telegramBotService;
 
     @Autowired
     private ObjectMapper objectMapper;

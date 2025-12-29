@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +32,9 @@ import static org.mockito.Mockito.when;
 public class FeedbackServiceTest {
     @Mock
     private FeedbackRepository feedbackRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private DogRepository dogRepository;
@@ -65,6 +69,7 @@ public class FeedbackServiceTest {
         Assertions.assertNotNull(feedbackResponse);
         Assertions.assertEquals(1L, feedbackEntity.getId());
 
+        verify(eventPublisher, times(1)).publishEvent(any(FeedbackCreatedEvent.class));
         verify(feedbackRepository, times(1)).save(any(FeedbackEntity.class));
     }
 
