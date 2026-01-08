@@ -22,7 +22,7 @@ public class FeedbackNotificationListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleFeedbackCreatedEvent(FeedbackCreatedEvent event) {
-        FeedbackEntity feedback = event.getFeedbackEntity();
+        FeedbackEntity feedback = event.feedbackEntity();
 
         List<Long> chatsId = userRepository.findAllPersonalChatsId();
 
@@ -39,17 +39,17 @@ public class FeedbackNotificationListener {
         try {
             telegramBotService.sendMessage(chatId, message);
         } catch (Exception e) {
-            log.error("Критическая ошибка при отправке в чат", e);
+            log.error("Critical error when sending to chat.", e);
         }
     }
 
     private String buildMessage(FeedbackEntity feedback) {
         return """
-                Новая заявка #%d
+                New application #%d
                 
-                От: %s
+                From: %s
                 
-                Проверьте админку для деталей.
+                Check the admin panel for details.
                 """.formatted(feedback.getId(), feedback.getName());
     }
 }
