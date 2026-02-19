@@ -22,5 +22,3 @@ A specialized CRM system for professional dog breeders to manage leads, secure a
 Currently migrating from a monolithic structure to a more modular approach.
 * [x] User Authentication & Security
 * [x] Telegram Notification Service
-* [ ] Payment Gateway Integration (Stripe/LiqPay)
-* [ ] Booking State Machine
